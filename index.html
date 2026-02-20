@@ -3,37 +3,41 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
-    <title>Protege Bien - Sistema de Inventario</title>
-    
+    <title>PROTEGE BIEN - Inventario Corporativo</title>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
-
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap');
-        body { font-family: 'Montserrat', sans-serif; }
+        body { font-family: 'Montserrat', sans-serif; -webkit-tap-highlight-color: transparent; }
+        .custom-scroll::-webkit-scrollbar { width: 4px; }
+        .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #4a90e2; border-radius: 10px; }
     </style>
 </head>
-<body class="bg-[#f8fafc]">
+<body class="bg-[#f1f5f9]">
     <div id="root"></div>
 
     <script type="text/babel">
         const { useState, useEffect, useMemo } = React;
 
         const App = () => {
+            // Intentamos recuperar de la llave original "it_inventory_data"
             const [inventario, setInventario] = useState(() => {
-                const d = localStorage.getItem('pb_data_final');
+                const d = localStorage.getItem('it_inventory_data') || localStorage.getItem('pb_data_final') || localStorage.getItem('pb_data');
                 return d ? JSON.parse(d) : [];
             });
+
             const [cat, setCat] = useState("General");
             const [open, setOpen] = useState(false);
             const [modal, setModal] = useState(false);
             const [busqueda, setBusqueda] = useState("");
+            const [busquedaMenu, setBusquedaMenu] = useState("");
+            const [editando, setEditando] = useState(null);
             const [nuevo, setNuevo] = useState({ idE: '', nom: '', ok: 0, bj: 0, cat: 'Laptops' });
 
             const depts = {
@@ -41,132 +45,157 @@
                 "Direccion": ['Paquetes Alcanfores', 'Paquetes Cerveza', 'Paquetes Para Tasas', 'Vinos', 'Tasas', 'Listones']
             };
 
-            useEffect(() => { localStorage.setItem('pb_data_final', JSON.stringify(inventario)); }, [inventario]);
+            useEffect(() => { 
+                localStorage.setItem('it_inventory_data', JSON.stringify(inventario)); 
+            }, [inventario]);
 
             const filtrados = useMemo(() => {
                 return inventario.filter(i => {
-                    const matchCat = cat === "General" || i.cat === cat;
-                    const matchBusqueda = i.nom.toLowerCase().includes(busqueda.toLowerCase()) || i.idE.toLowerCase().includes(busqueda.toLowerCase());
-                    return matchCat && matchBusqueda;
+                    const mCat = cat === "General" || i.cat === cat;
+                    const mBus = i.nom.toLowerCase().includes(busqueda.toLowerCase()) || i.idE.toLowerCase().includes(busqueda.toLowerCase());
+                    return mCat && mBus;
                 });
             }, [inventario, cat, busqueda]);
 
-            // --- FUNCIONES DE EXPORTACIÓN ---
-            const exportarExcel = () => {
-                const dataParaExcel = filtrados.map(i => ({
-                    ID: i.idE,
-                    Nombre: i.nom,
-                    Categoría: i.cat,
-                    Funcionales: i.ok,
-                    Bajas: i.bj,
-                    Total: Number(i.ok) + Number(i.bj)
-                }));
-                const ws = XLSX.utils.json_to_sheet(dataParaExcel);
-                const wb = XLSX.utils.book_new();
-                XLSX.utils.book_append_sheet(wb, ws, "Inventario");
-                XLSX.writeFile(wb, `Inventario_${cat}_${new Date().toLocaleDateString()}.xlsx`);
+            const guardar = (e) => {
+                e.preventDefault();
+                if (editando) {
+                    setInventario(inventario.map(i => i.id === editando ? { ...nuevo, id: editando } : i));
+                } else {
+                    setInventario([...inventario, { ...nuevo, id: Date.now() }]);
+                }
+                setModal(false);
+                setEditando(null);
+                setNuevo({ idE: '', nom: '', ok: 0, bj: 0, cat: 'Laptops' });
             };
 
-            const exportarPDF = () => {
-                const doc = new jspdf.jsPDF();
-                doc.text(`Reporte de Inventario: ${cat}`, 14, 15);
-                const tabla = filtrados.map(i => [i.idE, i.nom, i.cat, i.ok, i.bj, Number(i.ok) + Number(i.bj)]);
-                doc.autoTable({
-                    head: [['ID', 'Nombre', 'Categoría', 'OK', 'Baja', 'Total']],
-                    body: tabla,
-                    startY: 20
-                });
-                doc.save(`Inventario_${cat}.pdf`);
+            const prepararEdicion = (item) => {
+                setEditando(item.id);
+                setNuevo(item);
+                setModal(true);
+            };
+
+            const exportExcel = () => {
+                const ws = XLSX.utils.json_to_sheet(filtrados.map(i => ({
+                    ID: i.idE, Nombre: i.nom, Categoría: i.cat, OK: i.ok, Baja: i.bj, Total: Number(i.ok)+Number(i.bj)
+                })));
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "Stock");
+                XLSX.writeFile(wb, `PB_Inventario_${cat}.xlsx`);
             };
 
             return (
                 <div className="flex h-screen overflow-hidden">
-                    {/* Sidebar */}
-                    <aside className={`${open ? 'translate-x-0' : '-translate-x-full'} fixed inset-y-0 left-0 z-50 w-72 bg-[#002d5b] text-white transition-transform lg:relative lg:translate-x-0 shadow-2xl`}>
-                        <div className="p-6 border-b border-white/10 font-black italic text-[#4a90e2] text-2xl tracking-tighter">PROTEGE BIEN</div>
-                        <nav className="p-4 overflow-y-auto h-full pb-32">
-                            <button onClick={() => {setCat("General"); setOpen(false);}} className={`w-full text-left p-4 rounded-xl font-black text-xs mb-6 ${cat === "General" ? 'bg-[#4a90e2]' : 'bg-white/5'}`}>📊 PANEL GENERAL</button>
+                    {/* Sidebar Mejorado con Buscador */}
+                    <aside className={`${open ? 'translate-x-0' : '-translate-x-full'} fixed inset-y-0 left-0 z-50 w-72 bg-[#002d5b] text-white transition-transform lg:relative lg:translate-x-0 flex flex-col`}>
+                        <div className="p-6 border-b border-white/10">
+                            <h2 className="font-black italic text-[#4a90e2] text-xl tracking-tighter">PROTEGE BIEN</h2>
+                            <input 
+                                className="w-full mt-4 bg-white/10 rounded-lg px-3 py-2 text-[10px] outline-none border border-white/5 focus:bg-white/20"
+                                placeholder="Filtrar categorías..."
+                                onChange={(e) => setBusquedaMenu(e.target.value)}
+                            />
+                        </div>
+                        <nav className="flex-1 overflow-y-auto custom-scroll p-4">
+                            <button onClick={() => {setCat("General"); setOpen(false);}} className={`w-full text-left p-3 rounded-xl font-black text-xs mb-4 ${cat === "General" ? 'bg-[#4a90e2] shadow-lg shadow-blue-500/20' : 'hover:bg-white/5'}`}>📊 PANEL GENERAL</button>
                             {Object.entries(depts).map(([d, items]) => (
                                 <div key={d} className="mb-6">
-                                    <p className="text-[10px] text-[#4a90e2] font-black uppercase px-3 mb-3 tracking-widest">{d}</p>
-                                    <div className="space-y-1">
-                                        {items.map(i => (
-                                            <button key={i} onClick={() => {setCat(i); setOpen(false);}} className={`w-full text-left py-2 px-6 rounded-lg text-[11px] transition-all ${cat === i ? 'bg-white/10 text-white font-bold' : 'text-slate-400 hover:text-white'}`}>{i}</button>
-                                        ))}
-                                    </div>
+                                    <h3 className="text-[9px] font-black text-blue-400 uppercase tracking-[0.2em] px-3 mb-2">{d}</h3>
+                                    {items.filter(i => i.toLowerCase().includes(busquedaMenu.toLowerCase())).map(i => (
+                                        <button key={i} onClick={() => {setCat(i); setOpen(false);}} className={`w-full text-left py-2 px-6 rounded-lg text-[11px] block ${cat === i ? 'bg-white/10 text-white font-bold border-l-2 border-[#4a90e2]' : 'text-slate-400 hover:text-slate-200'}`}>{i}</button>
+                                    ))}
                                 </div>
                             ))}
                         </nav>
                     </aside>
 
-                    {/* Main */}
-                    <main className="flex-1 flex flex-col min-w-0 bg-[#f8fafc]">
-                        <header className="p-4 lg:p-8 bg-white border-b">
-                            <div className="flex justify-between items-center mb-6">
-                                <button onClick={() => setOpen(true)} className="lg:hidden text-2xl">☰</button>
-                                <h1 className="font-black uppercase italic text-lg text-[#002d5b] truncate pr-4">{cat}</h1>
-                                <button onClick={() => setModal(true)} className="bg-[#002d5b] text-white px-5 py-2.5 rounded-xl font-black text-[10px] shadow-lg">+ NUEVO</button>
+                    {/* Main Content */}
+                    <main className="flex-1 flex flex-col min-w-0">
+                        <header className="bg-white p-4 lg:p-6 border-b shadow-sm">
+                            <div className="flex justify-between items-center mb-4">
+                                <button onClick={() => setOpen(true)} className="lg:hidden p-2 text-xl">☰</button>
+                                <h1 className="font-900 uppercase italic text-[#002d5b] tracking-tighter lg:text-2xl truncate pr-4">{cat}</h1>
+                                <button onClick={() => {setEditando(null); setModal(true);}} className="bg-[#002d5b] text-white px-4 py-2 rounded-xl font-black text-[10px] shadow-lg active:scale-95 transition-all">+ AGREGAR</button>
                             </div>
-
-                            {/* Botones de Exportación */}
-                            <div className="flex gap-2 mb-6">
-                                <button onClick={exportarExcel} className="flex-1 bg-emerald-50 text-emerald-700 border border-emerald-100 py-2 rounded-xl font-black text-[9px] uppercase">Excel 📗</button>
-                                <button onClick={exportarPDF} className="flex-1 bg-rose-50 text-rose-700 border border-rose-100 py-2 rounded-xl font-black text-[9px] uppercase">PDF 📕</button>
+                            <div className="flex gap-2 mb-4">
+                                <button onClick={exportExcel} className="flex-1 bg-emerald-50 text-emerald-700 py-2.5 rounded-xl font-black text-[9px] border border-emerald-100 uppercase tracking-widest">Excel 📗</button>
+                                <button onClick={() => window.print()} className="flex-1 bg-slate-50 text-slate-700 py-2.5 rounded-xl font-black text-[9px] border border-slate-100 uppercase tracking-widest">Imprimir 🖨️</button>
                             </div>
-
-                            <input className="w-full p-4 bg-slate-100 rounded-2xl text-sm outline-none focus:ring-2 ring-blue-500/20" placeholder="🔍 Buscar por nombre o ID..." value={busqueda} onChange={e => setBusqueda(e.target.value)} />
+                            <input 
+                                className="w-full p-4 bg-slate-100 rounded-2xl text-sm outline-none focus:ring-2 ring-[#4a90e2]/30 transition-all" 
+                                placeholder="🔍 Buscar por nombre o número de etiqueta..." 
+                                value={busqueda}
+                                onChange={e => setBusqueda(e.target.value)}
+                            />
                         </header>
 
-                        <div className="flex-1 overflow-y-auto p-4 space-y-4 pb-24">
+                        <div className="flex-1 overflow-y-auto p-4 space-y-4 pb-28">
                             {filtrados.map(i => (
-                                <div key={i.id} className="bg-white p-5 rounded-[2rem] shadow-sm border border-slate-100 relative">
-                                    <div className="flex justify-between text-[9px] font-black text-blue-500 mb-2">
-                                        <span className="bg-blue-50 px-2 py-1 rounded-md tracking-tighter uppercase">ID: {i.idE}</span>
-                                        <button onClick={() => {if(confirm('¿Borrar?')) setInventario(prev => prev.filter(x => x.id !== i.id))}} className="text-slate-300 hover:text-rose-500 text-base">🗑️</button>
+                                <div key={i.id} className="bg-white p-5 rounded-[2.5rem] shadow-sm border border-slate-200/60 transition-all hover:shadow-md">
+                                    <div className="flex justify-between items-start mb-4">
+                                        <span className="bg-blue-100 text-[#002d5b] text-[9px] px-3 py-1 rounded-full font-black uppercase italic">ID: {i.idE || 'SIN ETIQUETA'}</span>
+                                        <div className="flex gap-3">
+                                            <button onClick={() => prepararEdicion(i)} className="text-slate-400 hover:text-blue-500">✏️</button>
+                                            <button onClick={() => {if(confirm('¿Seguro?')) setInventario(prev => prev.filter(x => x.id !== i.id))}} className="text-slate-400 hover:text-rose-500">🗑️</button>
+                                        </div>
                                     </div>
-                                    <p className="font-black italic uppercase text-[#002d5b] text-base mb-4 tracking-tighter">{i.nom}</p>
-                                    <div className="grid grid-cols-3 gap-3">
-                                        <div className="bg-slate-900 text-white p-3 rounded-2xl text-center">
-                                            <span className="block text-[8px] font-bold text-slate-400 uppercase">Total</span>
-                                            <span className="font-black text-lg">{Number(i.ok)+Number(i.bj)}</span>
+                                    <h3 className="font-black italic uppercase text-[#002d5b] text-base mb-4 leading-tight">{i.nom}</h3>
+                                    <div className="flex gap-3">
+                                        <div className="flex-1 bg-slate-900 text-white rounded-2xl p-3 text-center">
+                                            <p className="text-[7px] font-bold text-slate-400 uppercase mb-1">Total</p>
+                                            <p className="text-lg font-black">{Number(i.ok)+Number(i.bj)}</p>
                                         </div>
-                                        <div className="bg-blue-50 text-blue-700 p-3 rounded-2xl text-center">
-                                            <span className="block text-[8px] font-bold text-blue-400 uppercase">OK</span>
-                                            <span className="font-black text-lg">{i.ok}</span>
+                                        <div className="flex-1 bg-blue-50 text-blue-600 rounded-2xl p-3 text-center border border-blue-100">
+                                            <p className="text-[7px] font-bold uppercase mb-1">OK</p>
+                                            <p className="text-lg font-black">{i.ok}</p>
                                         </div>
-                                        <div className="bg-red-50 text-red-600 p-3 rounded-2xl text-center">
-                                            <span className="block text-[8px] font-bold text-red-400 uppercase">Baja</span>
-                                            <span className="font-black text-lg">{i.bj}</span>
+                                        <div className="flex-1 bg-rose-50 text-rose-600 rounded-2xl p-3 text-center border border-rose-100">
+                                            <p className="text-[7px] font-bold uppercase mb-1">Baja</p>
+                                            <p className="text-lg font-black">{i.bj}</p>
                                         </div>
                                     </div>
                                 </div>
                             ))}
                         </div>
 
-                        {/* Modal */}
+                        {/* Modal para Nuevo / Editar */}
                         {modal && (
-                            <div className="fixed inset-0 bg-[#002d5b]/80 backdrop-blur-sm z-[100] flex items-end lg:items-center justify-center">
-                                <div className="bg-white rounded-t-[3rem] lg:rounded-[3rem] p-8 w-full max-w-lg shadow-2xl">
-                                    <h2 className="font-black text-[#002d5b] text-xl mb-6 uppercase italic">Nuevo Registro</h2>
+                            <div className="fixed inset-0 bg-[#002d5b]/90 backdrop-blur-md z-[100] flex items-end lg:items-center justify-center">
+                                <form onSubmit={guardar} className="bg-white w-full max-w-lg rounded-t-[3rem] lg:rounded-[3rem] p-8 shadow-2xl animate-in slide-in-from-bottom duration-300">
+                                    <h2 className="font-900 text-[#002d5b] text-xl mb-6 uppercase italic">{editando ? 'Editar Registro' : 'Nuevo Activo'}</h2>
                                     <div className="space-y-4">
-                                        <input className="w-full p-4 bg-slate-50 border rounded-2xl font-bold" placeholder="ID Etiqueta" onChange={e => setNuevo({...nuevo, idE: e.target.value})} />
-                                        <input className="w-full p-4 bg-slate-50 border rounded-2xl font-bold" placeholder="Nombre del Equipo" onChange={e => setNuevo({...nuevo, nom: e.target.value})} />
-                                        <select className="w-full p-4 bg-slate-50 border rounded-2xl font-bold" onChange={e => setNuevo({...nuevo, cat: e.target.value})}>
-                                            {Object.values(depts).flat().map(x => <option key={x} value={x}>{x}</option>)}
-                                        </select>
                                         <div className="grid grid-cols-2 gap-4">
-                                            <input type="number" className="p-4 bg-blue-50 rounded-2xl font-black text-center text-blue-700" placeholder="OK" onChange={e => setNuevo({...nuevo, ok: e.target.value})} />
-                                            <input type="number" className="p-4 bg-red-50 rounded-2xl font-black text-center text-red-700" placeholder="Baja" onChange={e => setNuevo({...nuevo, bj: e.target.value})} />
+                                            <div className="space-y-1">
+                                                <label className="text-[9px] font-black text-slate-400 ml-2 uppercase">ID Etiqueta</label>
+                                                <input required className="w-full p-4 bg-slate-50 border rounded-2xl font-bold focus:ring-2 ring-blue-500/20" value={nuevo.idE} onChange={e => setNuevo({...nuevo, idE: e.target.value})} />
+                                            </div>
+                                            <div className="space-y-1">
+                                                <label className="text-[9px] font-black text-slate-400 ml-2 uppercase">Categoría</label>
+                                                <select className="w-full p-4 bg-slate-50 border rounded-2xl font-bold" value={nuevo.cat} onChange={e => setNuevo({...nuevo, cat: e.target.value})}>
+                                                    {Object.values(depts).flat().map(x => <option key={x} value={x}>{x}</option>)}
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-[9px] font-black text-slate-400 ml-2 uppercase">Nombre / Descripción</label>
+                                            <input required className="w-full p-4 bg-slate-50 border rounded-2xl font-bold focus:ring-2 ring-blue-500/20" value={nuevo.nom} onChange={e => setNuevo({...nuevo, nom: e.target.value})} />
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-1">
+                                                <label className="text-[9px] font-black text-blue-500 ml-2 uppercase">En Buen Estado</label>
+                                                <input type="number" className="p-4 bg-blue-50 border border-blue-100 rounded-2xl font-black text-center text-blue-700" value={nuevo.ok} onChange={e => setNuevo({...nuevo, ok: e.target.value})} />
+                                            </div>
+                                            <div className="space-y-1">
+                                                <label className="text-[9px] font-black text-rose-500 ml-2 uppercase">En Baja / Dañado</label>
+                                                <input type="number" className="p-4 bg-rose-50 border border-rose-100 rounded-2xl font-black text-center text-rose-700" value={nuevo.bj} onChange={e => setNuevo({...nuevo, bj: e.target.value})} />
+                                            </div>
                                         </div>
                                         <div className="flex gap-4 pt-4">
-                                            <button onClick={() => setModal(false)} className="flex-1 font-bold text-slate-400 uppercase text-xs">Cancelar</button>
-                                            <button onClick={() => {
-                                                setInventario([...inventario, {...nuevo, id: Date.now()}]);
-                                                setModal(false);
-                                            }} className="flex-1 bg-[#002d5b] text-white py-5 rounded-[1.5rem] font-black uppercase text-xs shadow-xl active:scale-95">Guardar</button>
+                                            <button type="button" onClick={() => setModal(false)} className="flex-1 font-black text-slate-400 uppercase text-[10px] tracking-widest">Cancelar</button>
+                                            <button type="submit" className="flex-1 bg-[#002d5b] text-white py-5 rounded-[1.5rem] font-black uppercase text-[10px] shadow-xl hover:shadow-blue-500/20 active:scale-95 transition-all">Guardar Cambios</button>
                                         </div>
                                     </div>
-                                </div>
+                                </form>
                             </div>
                         )}
                     </main>
