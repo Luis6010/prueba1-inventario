@@ -20,8 +20,7 @@
 <body>
     <div id="root"></div>
 
-    <script type="text/babel">
-        const { useState, useEffect, useMemo, useRef } = React;
+    const { useState, useEffect, useMemo, useRef } = React;
 
         // --- COMPONENTE: BARRA DE DISPONIBILIDAD ---
         const StockBar = ({ actuales, totales }) => {
@@ -45,8 +44,8 @@
 
         function App() {
             const estructuraEmpresa = {
-                "Tecnología (TI)": ['Laptops', 'CPU', 'Celulares', 'Monitores', 'Teclados', 'Mouse', 'Cables', 'Impresoras', 'Telefonos', 'Mousepad', 'Repetidores', 'Router', 'Camara', 'Disco'],
-                "Direccion": ['Paquetes Alcanfores', 'Paquetes Cerveza', 'Vinos', 'Tasas', 'Listones']
+                "Tecnología (TI)": ['Laptops', 'CPU', 'Celulares', 'Monitores', 'Teclados', 'Mouse', 'Cables', 'Impresoras', 'Telefonos', 'Mousepad', 'Extension', 'Cargadores', 'Adaptadores', 'Escaneres', 'Soporte Laptop', 'Soporte Pantalla', 'Pantalla', 'Repetidores', 'Preamplificadores', 'Switch', 'Alexa', 'Fuente Alimentacion', 'Memoria USB', 'Router', 'Camara', 'Disco', 'Trituradora', 'Convertidor', 'Transmisor', 'Control'],
+                "Direccion": ['Paquetes Alcanfores', 'Paquetes Cerveza', 'Paquetes Para Tasas', 'Vinos', 'Tasas', 'Listones']
             };
 
             const [inventario, setInventario] = useState(() => {
@@ -61,7 +60,7 @@
             const [busqueda, setBusqueda] = useState("");
             const [busquedaRubro, setBusquedaRubro] = useState("");
             const [filtroBajoStock, setFiltroBajoStock] = useState(false);
-            const [deptsAbiertos, setDeptsAbiertos] = useState({ "Tecnología (TI)": true });
+            const [deptsAbiertos, setDeptsAbiertos] = useState({ "Tecnología (TI)": true, "Direccion": false });
             const [nuevoEquipo, setNuevoEquipo] = useState({ idEtiqueta: '', categoria: '', nombre: '', modelo: '', stock: 0, funcionales: 0, noFuncionales: 0, asignado: '' });
 
             useEffect(() => {
@@ -107,23 +106,44 @@
                 setIsModalOpen(false);
             };
 
-            const exportarExcel = () => {
-                const ws = XLSX.utils.json_to_sheet(inventarioFiltrado);
-                const wb = XLSX.utils.book_new();
-                XLSX.utils.book_append_sheet(wb, ws, "Inventario");
-                XLSX.writeFile(wb, "Reporte_Inventario.xlsx");
+            const toggleDepto = (dept) => {
+                setDeptsAbiertos(prev => ({ ...prev, [dept]: !prev[dept] }));
             };
+
+            const rubrosDisponibles = useMemo(() => Object.values(estructuraEmpresa).flat(), []);
 
             return (
                 <div className="h-screen bg-[#f8fafc] flex overflow-hidden text-[#002d5b]">
-                    {/* Sidebar simplificado para móvil */}
-                    <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-[#002d5b] text-white transform transition-transform lg:relative lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-                        <div className="p-6 border-b border-white/10 flex justify-between items-center">
-                            <h2 className="text-xl font-black italic text-[#4a90e2]">PROTEGE BIEN</h2>
-                            <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden">✕</button>
+                    {/* Sidebar Mejorado */}
+                    <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-[#002d5b] text-white transform transition-transform duration-300 lg:relative lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full shadow-2xl'}`}>
+                        <div className="p-8 border-b border-white/5">
+                            <h2 className="text-xl font-black italic text-[#4a90e2] mb-4">PROTEGE BIEN</h2>
+                            <input 
+                                type="text" 
+                                placeholder="Buscar rubro..." 
+                                className="w-full bg-white/10 rounded-lg px-3 py-2 text-[10px] outline-none border border-white/10"
+                                value={busquedaRubro}
+                                onChange={(e) => setBusquedaRubro(e.target.value)}
+                            />
                         </div>
-                        <nav className="p-4 overflow-y-auto h-full">
-                            <button onClick={() => {setCategoriaActiva("General"); setIsSidebarOpen(false);}} className="w-full text-left py-3 px-4 rounded-xl text-xs font-black mb-4 bg-[#4a90e2]">📊 PANEL GENERAL</button>
+                        <nav className="p-4 space-y-2 overflow-y-auto h-[calc(100vh-160px)]">
+                            <button onClick={() => {setCategoriaActiva("General"); setIsSidebarOpen(false);}} className={`w-full text-left py-3 px-4 rounded-xl text-[11px] font-black ${categoriaActiva === "General" ? 'bg-[#4a90e2]' : 'hover:bg-white/5 text-slate-400'}`}>📊 PANEL GENERAL</button>
+                            
+                            {Object.entries(estructuraEmpresa).map(([dept, rubros]) => (
+                                <div key={dept} className="mb-2">
+                                    <div className="flex justify-between items-center px-4 py-2 bg-white/5 rounded-t-xl">
+                                        <button onClick={() => {setCategoriaActiva(dept); setIsSidebarOpen(false);}} className="text-[10px] font-black text-[#4a90e2] uppercase">{dept}</button>
+                                        <button onClick={() => toggleDepto(dept)} className="text-xs">{deptsAbiertos[dept] ? '▲' : '▼'}</button>
+                                    </div>
+                                    {deptsAbiertos[dept] && (
+                                        <div className="bg-white/5 rounded-b-xl pb-2">
+                                            {rubros.filter(r => r.toLowerCase().includes(busquedaRubro.toLowerCase())).map(r => (
+                                                <button key={r} onClick={() => {setCategoriaActiva(r); setIsSidebarOpen(false);}} className="w-full text-left py-2 pl-8 pr-4 text-[11px] text-slate-400 hover:text-white">{r}</button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
                         </nav>
                     </aside>
 
@@ -134,6 +154,7 @@
                                 <h1 className="text-xl font-black uppercase italic tracking-tighter truncate">{categoriaActiva}</h1>
                                 <button onClick={() => {setEditandoId(null); setIsModalOpen(true);}} className="bg-[#002d5b] text-white px-4 py-2 rounded-xl font-black text-[10px] uppercase shadow-md">+ Nuevo</button>
                             </div>
+                            {/* Estadísticas */}
                             <div className="grid grid-cols-3 gap-2 mb-6">
                                 <div className="bg-slate-50 p-3 rounded-2xl border text-center">
                                     <span className="text-[8px] font-black text-slate-400 block uppercase">Total</span>
@@ -148,14 +169,14 @@
                                     <span className="text-lg font-black text-rose-600">{estadisticasVistaActual.baja}</span>
                                 </div>
                             </div>
-                            <input type="text" placeholder="Buscar por nombre o ID..." className="w-full p-3 bg-slate-100 rounded-xl text-sm outline-none" value={busqueda} onChange={e => setBusqueda(e.target.value)} />
+                            <input type="text" placeholder="Buscar..." className="w-full p-3 bg-slate-100 rounded-xl text-sm" value={busqueda} onChange={e => setBusqueda(e.target.value)} />
                         </header>
 
                         <div className="flex-1 overflow-y-auto p-4 space-y-4 pb-24">
                             {inventarioFiltrado.map(item => (
-                                <div key={item.id} className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
-                                    <div className="flex justify-between items-start mb-2">
-                                        <span className="bg-[#4a90e2] text-white text-[8px] px-2 py-0.5 rounded font-black uppercase">ID: {item.idEtiqueta || 'S/ID'}</span>
+                                <div key={item.id} className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 relative">
+                                    <div className="flex justify-between mb-2">
+                                        <span className="bg-[#4a90e2] text-white text-[8px] px-2 py-0.5 rounded font-black">ID: {item.idEtiqueta || 'S/ID'}</span>
                                         <div className="flex gap-2">
                                             <button onClick={() => {setEditandoId(item.id); setNuevoEquipo(item); setIsModalOpen(true);}}>✏️</button>
                                             <button onClick={() => {if(confirm('¿Eliminar?')) setInventario(p => p.filter(i => i.id !== item.id))}}>🗑️</button>
@@ -163,9 +184,9 @@
                                     </div>
                                     <h3 className="font-black italic text-[#002d5b]">{item.nombre}</h3>
                                     <div className="grid grid-cols-3 gap-2 mt-3">
-                                        <div className="bg-slate-800 text-white p-2 rounded-lg text-center text-sm font-black">{item.stock}</div>
-                                        <div className="bg-blue-100 text-blue-700 p-2 rounded-lg text-center text-sm font-black">{item.funcionales}</div>
-                                        <div className="bg-red-100 text-red-600 p-2 rounded-lg text-center text-sm font-black">{item.noFuncionales}</div>
+                                        <div className="bg-[#002d5b] text-white p-2 rounded-xl text-center font-black text-base">{item.stock}</div>
+                                        <div className="bg-[#d1e3f8] text-[#0056b3] p-2 rounded-xl text-center font-black text-base">{item.funcionales}</div>
+                                        <div className="bg-rose-50 text-rose-600 p-2 rounded-xl text-center font-black text-base">{item.noFuncionales}</div>
                                     </div>
                                     <StockBar actuales={item.funcionales} totales={item.stock} />
                                 </div>
@@ -173,20 +194,20 @@
                         </div>
 
                         {isModalOpen && (
-                            <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-                                <div className="bg-white w-full rounded-3xl p-6 overflow-hidden">
-                                    <div className="flex justify-between items-center mb-4">
-                                        <h2 className="font-black uppercase">Activo</h2>
-                                        <button onClick={() => setIsModalOpen(false)}>✕</button>
+                            <div className="fixed inset-0 bg-black/50 z-50 flex items-end lg:items-center justify-center">
+                                <div className="bg-white w-full max-w-lg rounded-t-3xl lg:rounded-3xl p-6">
+                                    <div className="flex justify-between items-center mb-6">
+                                        <h2 className="font-black italic uppercase">Nuevo Activo</h2>
+                                        <button onClick={() => setIsModalOpen(false)} className="text-xl">✕</button>
                                     </div>
                                     <form onSubmit={guardarEquipo} className="space-y-4">
-                                        <input className="w-full p-3 bg-slate-100 rounded-xl" placeholder="ID Etiqueta" value={nuevoEquipo.idEtiqueta} onChange={e => setNuevoEquipo({...nuevoEquipo, idEtiqueta: e.target.value})} />
-                                        <input required className="w-full p-3 bg-slate-100 rounded-xl" placeholder="Nombre" value={nuevoEquipo.nombre} onChange={e => setNuevoEquipo({...nuevoEquipo, nombre: e.target.value})} />
+                                        <input className="w-full p-4 bg-slate-100 rounded-xl font-bold" placeholder="ID Etiqueta" value={nuevoEquipo.idEtiqueta} onChange={e => setNuevoEquipo({...nuevoEquipo, idEtiqueta: e.target.value})} />
+                                        <input required className="w-full p-4 bg-slate-100 rounded-xl font-bold" placeholder="Nombre / Marca" value={nuevoEquipo.nombre} onChange={e => setNuevoEquipo({...nuevoEquipo, nombre: e.target.value})} />
                                         <div className="grid grid-cols-2 gap-4">
-                                            <input type="number" className="w-full p-3 bg-slate-100 rounded-xl" placeholder="OK" value={nuevoEquipo.funcionales} onChange={e => setNuevoEquipo({...nuevoEquipo, funcionales: e.target.value})} />
-                                            <input type="number" className="w-full p-3 bg-slate-100 rounded-xl" placeholder="Baja" value={nuevoEquipo.noFuncionales} onChange={e => setNuevoEquipo({...nuevoEquipo, noFuncionales: e.target.value})} />
+                                            <input type="number" className="w-full p-4 bg-slate-100 rounded-xl font-black text-center" placeholder="OK" value={nuevoEquipo.funcionales} onChange={e => setNuevoEquipo({...nuevoEquipo, funcionales: e.target.value})} />
+                                            <input type="number" className="w-full p-4 bg-slate-100 rounded-xl font-black text-center" placeholder="BAJA" value={nuevoEquipo.noFuncionales} onChange={e => setNuevoEquipo({...nuevoEquipo, noFuncionales: e.target.value})} />
                                         </div>
-                                        <button type="submit" className="w-full py-4 bg-[#002d5b] text-white font-black rounded-xl">GUARDAR</button>
+                                        <button type="submit" className="w-full py-5 bg-[#002d5b] text-white font-black rounded-xl shadow-lg">GUARDAR</button>
                                     </form>
                                 </div>
                             </div>
@@ -198,6 +219,5 @@
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<App />);
-    </script>
 </body>
 </html>
