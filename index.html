@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
-    <title>Protege Bien - Inventario</title>
+    <title>Protege Bien Inventario</title>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap');
-        body { font-family: 'Montserrat', sans-serif; }
+        body { font-family: 'Montserrat', sans-serif; background-color: #f8fafc; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
     </style>
 </head>
@@ -20,12 +20,12 @@
     <script type="text/babel">
         const { useState, useEffect, useMemo } = React;
 
+        // Componente de barra visual
         const StockBar = ({ actuales, totales }) => {
             const porcentaje = totales > 0 ? Math.min((actuales / totales) * 100, 100) : 0;
-            let colorBarra = "bg-[#4a90e2]"; 
-            if (porcentaje < 20) colorBarra = "bg-rose-500";
-            else if (porcentaje < 50) colorBarra = "bg-amber-500";
-
+            let color = "bg-[#4a90e2]"; 
+            if (porcentaje < 20) color = "bg-rose-500";
+            else if (porcentaje < 50) color = "bg-amber-500";
             return (
                 <div className="w-full mt-2">
                     <div className="flex justify-between text-[9px] mb-1 font-bold text-slate-400 uppercase">
@@ -33,21 +33,22 @@
                         <span className="text-[#002d5b]">{Math.round(porcentaje)}%</span>
                     </div>
                     <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
-                        <div className={`h-full transition-all duration-700 ${colorBarra}`} style={{ width: `${porcentaje}%` }}></div>
+                        <div className={`h-full transition-all duration-700 ${color}`} style={{ width: `${porcentaje}%` }}></div>
                     </div>
                 </div>
             );
         };
 
         function App() {
+            // Datos de la empresa
             const estructuraEmpresa = {
                 "Tecnología (TI)": ['Laptops', 'CPU', 'Celulares', 'Monitores', 'Teclados', 'Mouse', 'Cables', 'Impresoras', 'Telefonos', 'Mousepad', 'Extension', 'Cargadores', 'Adaptadores', 'Escaneres', 'Soporte Laptop', 'Soporte Pantalla', 'Pantalla', 'Repetidores', 'Preamplificadores', 'Switch', 'Alexa', 'Fuente Alimentacion', 'Memoria USB', 'Router', 'Camara', 'Disco', 'Trituradora', 'Convertidor', 'Transmisor', 'Control'],
                 "Direccion": ['Paquetes Alcanfores', 'Paquetes Cerveza', 'Paquetes Para Tasas', 'Vinos', 'Tasas', 'Listones']
             };
 
             const [inventario, setInventario] = useState(() => {
-                const datos = localStorage.getItem('it_inventory_data');
-                return datos ? JSON.parse(datos) : [];
+                const guardado = localStorage.getItem('it_inventory_data');
+                return guardado ? JSON.parse(guardado) : [];
             });
 
             const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -82,86 +83,110 @@
 
             const guardar = (e) => {
                 e.preventDefault();
-                setInventario([...inventario, { ...nuevoEquipo, id: Date.now(), stock: Number(nuevoEquipo.funcionales) + Number(nuevoEquipo.noFuncionales) }]);
+                const item = { 
+                    ...nuevoEquipo, 
+                    id: Date.now(), 
+                    stock: Number(nuevoEquipo.funcionales) + Number(nuevoEquipo.noFuncionales) 
+                };
+                setInventario([...inventario, item]);
                 setIsModalOpen(false);
                 setNuevoEquipo({ idEtiqueta: '', categoria: '', nombre: '', funcionales: 0, noFuncionales: 0 });
             };
 
             return (
-                <div className="h-screen bg-[#f8fafc] flex overflow-hidden text-[#002d5b]">
-                    {/* SIDEBAR */}
+                <div className="h-screen flex overflow-hidden">
+                    {/* MENU LATERAL */}
                     <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-[#002d5b] text-white transform transition-transform duration-300 lg:relative lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
                         <div className="p-6 border-b border-white/10">
-                            <h2 className="text-xl font-black italic text-[#4a90e2] mb-4">PROTEGE BIEN</h2>
-                            <input type="text" placeholder="Filtrar rubros..." className="w-full bg-white/10 rounded-lg px-3 py-2 text-xs outline-none" onChange={(e) => setBusquedaRubro(e.target.value)} />
+                            <h2 className="text-xl font-black italic text-[#4a90e2]">PROTEGE BIEN</h2>
+                            <input type="text" placeholder="Buscar rubro..." className="w-full mt-4 bg-white/10 rounded-lg px-3 py-2 text-xs outline-none border border-white/5" onChange={(e) => setBusquedaRubro(e.target.value)} />
                         </div>
                         <nav className="p-4 space-y-2 overflow-y-auto h-[calc(100vh-150px)]">
-                            <button onClick={() => {setCategoriaActiva("General"); setIsSidebarOpen(false);}} className={`w-full text-left p-3 rounded-xl font-black text-xs ${categoriaActiva === "General" ? 'bg-[#4a90e2]' : ''}`}>📊 PANEL GENERAL</button>
+                            <button onClick={() => {setCategoriaActiva("General"); setIsSidebarOpen(false);}} className={`w-full text-left p-3 rounded-xl font-black text-xs ${categoriaActiva === "General" ? 'bg-[#4a90e2]' : 'text-slate-400'}`}>📊 PANEL GENERAL</button>
                             {Object.entries(estructuraEmpresa).map(([dept, rubros]) => (
-                                <div key={dept}>
-                                    <button onClick={() => setDeptsAbiertos({...deptsAbiertos, [dept]: !deptsAbiertos[dept]})} className="w-full flex justify-between p-2 text-[#4a90e2] font-black text-[10px] uppercase">
-                                        {dept} <span>{deptsAbiertos[dept] ? '▲' : '▼'}</span>
-                                    </button>
-                                    {deptsAbiertos[dept] && rubros.filter(r => r.toLowerCase().includes(busquedaRubro.toLowerCase())).map(r => (
-                                        <button key={r} onClick={() => {setCategoriaActiva(r); setIsSidebarOpen(false);}} className={`w-full text-left py-2 pl-6 text-xs ${categoriaActiva === r ? 'text-white font-bold' : 'text-slate-400'}`}>{r}</button>
-                                    ))}
+                                <div key={dept} className="mt-4">
+                                    <div className="flex justify-between items-center px-2 mb-1">
+                                        <span className="text-[10px] font-black text-[#4a90e2] uppercase tracking-widest">{dept}</span>
+                                    </div>
+                                    <div className="space-y-1">
+                                        {rubros.filter(r => r.toLowerCase().includes(busquedaRubro.toLowerCase())).map(r => (
+                                            <button key={r} onClick={() => {setCategoriaActiva(r); setIsSidebarOpen(false);}} className={`w-full text-left py-2 pl-4 rounded-lg text-xs transition-colors ${categoriaActiva === r ? 'bg-white/10 text-white font-bold' : 'text-slate-500 hover:text-slate-300'}`}>{r}</button>
+                                        ))}
+                                    </div>
                                 </div>
                             ))}
                         </nav>
                     </aside>
 
-                    {/* MAIN */}
-                    <main className="flex-1 flex flex-col overflow-hidden">
+                    {/* CONTENIDO PRINCIPAL */}
+                    <main className="flex-1 flex flex-col min-w-0">
                         <header className="bg-white border-b p-4 lg:p-8">
-                            <div className="flex justify-between items-center mb-4">
+                            <div className="flex justify-between items-center mb-6">
                                 <button onClick={() => setIsSidebarOpen(true)} className="lg:hidden text-2xl">☰</button>
-                                <h1 className="text-lg font-black uppercase italic">{categoriaActiva}</h1>
-                                <button onClick={() => setIsModalOpen(true)} className="bg-[#002d5b] text-white px-4 py-2 rounded-xl font-black text-xs">+ NUEVO</button>
+                                <h1 className="text-xl font-black uppercase italic tracking-tighter text-[#002d5b] truncate">{categoriaActiva}</h1>
+                                <button onClick={() => setIsModalOpen(true)} className="bg-[#002d5b] text-white px-4 py-2 rounded-xl font-black text-[10px] uppercase shadow-md active:scale-95">+ Nuevo</button>
                             </div>
-                            <div className="grid grid-cols-3 gap-2 mb-4">
-                                <div className="bg-slate-50 p-2 rounded-xl border text-center"><span className="text-[8px] block text-slate-400 font-bold uppercase">Total</span><span className="font-black">{stats.t}</span></div>
-                                <div className="bg-blue-50 p-2 rounded-xl border text-center"><span className="text-[8px] block text-[#4a90e2] font-bold uppercase">Disp</span><span className="font-black text-[#4a90e2]">{stats.ok}</span></div>
-                                <div className="bg-rose-50 p-2 rounded-xl border text-center"><span className="text-[8px] block text-rose-400 font-bold uppercase">Baja</span><span className="font-black text-rose-600">{stats.bad}</span></div>
+                            <div className="grid grid-cols-3 gap-3 mb-6">
+                                <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100 text-center">
+                                    <span className="text-[8px] font-black text-slate-400 block uppercase mb-1">Total</span>
+                                    <span className="text-lg font-black text-[#002d5b]">{stats.t}</span>
+                                </div>
+                                <div className="bg-blue-50 p-3 rounded-2xl border border-blue-100 text-center">
+                                    <span className="text-[8px] font-black text-[#4a90e2] block uppercase mb-1">Disp.</span>
+                                    <span className="text-lg font-black text-[#4a90e2]">{stats.ok}</span>
+                                </div>
+                                <div className="bg-rose-50 p-3 rounded-2xl border border-rose-100 text-center">
+                                    <span className="text-[8px] font-black text-rose-400 block uppercase mb-1">Baja</span>
+                                    <span className="text-lg font-black text-rose-600">{stats.bad}</span>
+                                </div>
                             </div>
-                            <input type="text" placeholder="Buscar producto..." className="w-full p-3 bg-slate-100 rounded-xl text-sm" onChange={e => setBusqueda(e.target.value)} />
+                            <input type="text" placeholder="🔍 Buscar por nombre o ID..." className="w-full p-4 bg-slate-100 rounded-2xl text-sm outline-none focus:ring-2 ring-[#4a90e2]/20" value={busqueda} onChange={e => setBusqueda(e.target.value)} />
                         </header>
 
-                        <div className="flex-1 overflow-y-auto p-4 space-y-3 pb-20">
+                        <div className="flex-1 overflow-y-auto p-4 space-y-4 pb-24">
+                            {inventarioFiltrado.length === 0 && <p className="text-center text-slate-400 text-xs mt-10 italic">No hay registros aquí.</p>}
                             {inventarioFiltrado.map(item => (
-                                <div key={item.id} className="bg-white p-4 rounded-2xl shadow-sm border">
-                                    <div className="flex justify-between text-[10px] mb-1 font-black">
-                                        <span className="text-[#4a90e2]">ID: {item.idEtiqueta}</span>
-                                        <button onClick={() => setInventario(inventario.filter(i => i.id !== item.id))}>🗑️</button>
+                                <div key={item.id} className="bg-white p-5 rounded-3xl shadow-sm border border-slate-100 relative">
+                                    <div className="flex justify-between items-start mb-3">
+                                        <span className="bg-[#4a90e2] text-white text-[8px] px-2 py-1 rounded-lg font-black uppercase tracking-tighter">ID: {item.idEtiqueta || 'S/ID'}</span>
+                                        <button onClick={() => {if(confirm('¿Eliminar?')) setInventario(p => p.filter(i => i.id !== item.id))}} className="text-slate-300 hover:text-rose-500">🗑️</button>
                                     </div>
-                                    <h3 className="font-black text-sm uppercase italic">{item.nombre}</h3>
-                                    <div className="flex gap-4 mt-2">
-                                        <div className="text-center"><span className="text-[8px] block text-slate-400 font-bold">STOCK</span><span className="font-black">{item.stock}</span></div>
-                                        <div className="text-center"><span className="text-[8px] block text-[#4a90e2] font-bold">OK</span><span className="font-black text-[#4a90e2]">{item.funcionales}</span></div>
-                                        <div className="text-center"><span className="text-[8px] block text-rose-400 font-bold">BAJA</span><span className="font-black text-rose-600">{item.noFuncionales}</span></div>
+                                    <h3 className="font-black italic text-[#002d5b] text-base mb-1">{item.nombre}</h3>
+                                    <div className="grid grid-cols-3 gap-2 my-4">
+                                        <div className="bg-slate-800 text-white p-2 rounded-xl text-center font-black text-sm">{item.stock}</div>
+                                        <div className="bg-blue-100 text-blue-700 p-2 rounded-xl text-center font-black text-sm">{item.funcionales}</div>
+                                        <div className="bg-red-50 text-red-600 p-2 rounded-xl text-center font-black text-sm">{item.noFuncionales}</div>
                                     </div>
                                     <StockBar actuales={item.funcionales} totales={item.stock} />
                                 </div>
                             ))}
                         </div>
 
+                        {/* MODAL */}
                         {isModalOpen && (
-                            <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4">
-                                <form onSubmit={guardar} className="bg-white w-full max-w-sm rounded-3xl p-6 space-y-4">
-                                    <h2 className="font-black uppercase italic">Nuevo Activo</h2>
-                                    <input required className="w-full p-3 bg-slate-100 rounded-xl" placeholder="ID Etiqueta" onChange={e => setNuevoEquipo({...nuevoEquipo, idEtiqueta: e.target.value})} />
-                                    <input required className="w-full p-3 bg-slate-100 rounded-xl" placeholder="Nombre / Marca" onChange={e => setNuevoEquipo({...nuevoEquipo, nombre: e.target.value})} />
-                                    <input required className="w-full p-3 bg-slate-100 rounded-xl" placeholder="Categoría" list="cats" onChange={e => setNuevoEquipo({...nuevoEquipo, categoria: e.target.value})} />
+                            <div className="fixed inset-0 bg-[#002d5b]/90 backdrop-blur-sm z-[100] flex items-end lg:items-center justify-center">
+                                <form onSubmit={guardar} className="bg-white w-full max-w-lg rounded-t-[40px] lg:rounded-[40px] p-8 space-y-4 shadow-2xl">
+                                    <div className="flex justify-between items-center mb-4">
+                                        <h2 className="font-black italic uppercase text-[#002d5b]">Nuevo Activo</h2>
+                                        <button type="button" onClick={() => setIsModalOpen(false)} className="text-2xl text-slate-300">✕</button>
+                                    </div>
+                                    <input required className="w-full p-4 bg-slate-50 border rounded-2xl font-bold" placeholder="ID Etiqueta (Ej: 001)" value={nuevoEquipo.idEtiqueta} onChange={e => setNuevoEquipo({...nuevoEquipo, idEtiqueta: e.target.value})} />
+                                    <input required className="w-full p-4 bg-slate-50 border rounded-2xl font-bold" placeholder="Nombre / Marca" value={nuevoEquipo.nombre} onChange={e => setNuevoEquipo({...nuevoEquipo, nombre: e.target.value})} />
+                                    <input required className="w-full p-4 bg-slate-50 border rounded-2xl font-bold" placeholder="Seleccionar Categoría" list="cats" value={nuevoEquipo.categoria} onChange={e => setNuevoEquipo({...nuevoEquipo, categoria: e.target.value})} />
                                     <datalist id="cats">
                                         {Object.values(estructuraEmpresa).flat().map(c => <option key={c} value={c} />)}
                                     </datalist>
                                     <div className="grid grid-cols-2 gap-4">
-                                        <input type="number" className="w-full p-3 bg-slate-100 rounded-xl" placeholder="Cant. OK" onChange={e => setNuevoEquipo({...nuevoEquipo, funcionales: e.target.value})} />
-                                        <input type="number" className="w-full p-3 bg-slate-100 rounded-xl" placeholder="Cant. BAJA" onChange={e => setNuevoEquipo({...nuevoEquipo, noFuncionales: e.target.value})} />
+                                        <div className="space-y-1">
+                                            <label className="text-[9px] font-black text-blue-500 ml-2 uppercase">Funcionales</label>
+                                            <input type="number" className="w-full p-4 bg-blue-50 border-blue-100 rounded-2xl font-black text-center text-blue-700" value={nuevoEquipo.funcionales} onChange={e => setNuevoEquipo({...nuevoEquipo, funcionales: e.target.value})} />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-[9px] font-black text-rose-500 ml-2 uppercase">En Baja</label>
+                                            <input type="number" className="w-full p-4 bg-rose-50 border-rose-100 rounded-2xl font-black text-center text-rose-700" value={nuevoEquipo.noFuncionales} onChange={e => setNuevoEquipo({...nuevoEquipo, noFuncionales: e.target.value})} />
+                                        </div>
                                     </div>
-                                    <div className="flex gap-2">
-                                        <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 py-3 font-bold">CANCELAR</button>
-                                        <button type="submit" className="flex-1 py-3 bg-[#002d5b] text-white font-black rounded-xl">GUARDAR</button>
-                                    </div>
+                                    <button type="submit" className="w-full py-5 bg-[#002d5b] text-white font-black rounded-2xl shadow-lg active:scale-95 transition-transform uppercase tracking-widest">Guardar Registro</button>
                                 </form>
                             </div>
                         )}
